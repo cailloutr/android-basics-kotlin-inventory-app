@@ -1,13 +1,13 @@
 package com.example.inventory
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import com.example.inventory.data.Item
 import com.example.inventory.data.ItemDao
 import kotlinx.coroutines.launch
 
 class InventoryViewModel(private val itemDao: ItemDao) : ViewModel() {
+
+    val allItems: LiveData<List<Item>> = itemDao.getAll().asLiveData()
 
     private fun insertItem(item: Item) {
         viewModelScope.launch {
@@ -23,6 +23,26 @@ class InventoryViewModel(private val itemDao: ItemDao) : ViewModel() {
         )
     }
 
+    private fun getUpdatedEntry(
+        id: Int,
+        itemName: String,
+        itemPrice: String,
+        itemCount: String
+    ) : Item {
+        return Item(id, itemName, itemPrice.toDouble(), itemCount.toInt())
+    }
+
+    fun updateItem(
+        itemId: Int,
+        itemName: String,
+        itemPrice: String,
+        itemCount: String
+    ) {
+        val updatedItem = getUpdatedEntry(itemId, itemName, itemPrice, itemCount)
+        updateItem(updatedItem)
+
+    }
+
     fun addNewItem(name: String, price: String, quantity: String) {
         val newItem = getNewItemEntry(name, price, quantity)
         insertItem(newItem)
@@ -35,6 +55,32 @@ class InventoryViewModel(private val itemDao: ItemDao) : ViewModel() {
         }
         return true
     }
+
+    fun retrieveItem(id: Int): LiveData<Item> {
+        return itemDao.getItemById(id).asLiveData()
+    }
+
+    fun deleteItem(item: Item) {
+        viewModelScope.launch {
+            itemDao.deleteItem(item)
+        }
+    }
+
+    fun updateItem(item: Item) {
+        viewModelScope.launch {
+            itemDao.updateItem(item)
+        }
+    }
+
+    fun sellItem(item: Item) {
+        if (item.quantityInStock > 0) {
+            // Decrease the quantity by 1
+            val newItem = item.copy(quantityInStock = item.quantityInStock - 1)
+            updateItem(newItem)
+        }
+    }
+
+    fun isStockAvailable(item: Item) = item.quantityInStock > 0
 }
 
 class InventoryViewModelFactory(private val itemDao: ItemDao) : ViewModelProvider.Factory {
